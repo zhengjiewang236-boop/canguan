@@ -2,15 +2,12 @@
 import { computed, ref } from 'vue'
 import { state, countsOn } from '../../data/db'
 import { daysBetween, fromISO, fullDate, today } from '../../data/model'
-import { makeBackup, markBackup } from '../../data/backup'
-import { MIME } from '../../io/report'
-import { shareFile } from '../../io/share'
 import AppBar from '../components/AppBar.vue'
 import Icon from '../components/Icon.vue'
+import BackupDialog from '../dialogs/BackupDialog.vue'
 import { push } from '../nav'
 import { appUpdate, catColor, catIconOf, isIOS, isStandalone, isWeChat } from '../common'
 import { startRestore } from '../flows'
-import { toast } from '../toast'
 import { ICON_BACKUP, ICON_CHART, ICON_INSTALL, ICON_RIGHT, ICON_SETTINGS, ICON_CLOSE } from '../icons'
 
 const t = computed(() => {
@@ -33,24 +30,7 @@ const backupText = computed(() => {
   return `上次备份：${d} 天前（${x.getMonth() + 1}月${x.getDate()}日）`
 })
 
-const busy = ref(false)
-async function backup() {
-  if (busy.value) return
-  busy.value = true
-  try {
-    // 先同步做好文件，马上调分享（iPhone 要求在点按钮的那一下里调）
-    const { name, bytes } = makeBackup()
-    const res = await shareFile(bytes, name, MIME, '餐馆记账备份')
-    if (res !== 'cancelled') {
-      await markBackup()
-      if (res === 'downloaded') toast('备份文件已下载：' + name)
-    }
-  } catch (e) {
-    toast('备份失败：' + ((e as Error)?.message ?? ''))
-  } finally {
-    busy.value = false
-  }
-}
+const showBackup = ref(false)
 
 // iPhone 用 Safari 打开（还没加到主屏幕）：提示先加到主屏幕
 const hideInstall = ref(false)
@@ -76,7 +56,7 @@ function closeInstall() {
 <template>
   <div class="screen">
     <AppBar title="餐馆记账">
-      <button class="btn text" :disabled="busy" @click="backup">备份数据</button>
+      <button class="btn text" @click="showBackup = true">备份数据</button>
       <button class="btn text" @click="startRestore">恢复数据</button>
     </AppBar>
     <div class="content stack">
@@ -145,6 +125,7 @@ function closeInstall() {
       <div class="tiny muted" style="padding: 0 4px">数据只存在这台手机的这个浏览器里。备份文件跟安卓 App 通用，可以互相恢复。</div>
       <div class="tiny muted center" style="opacity: 0.7">网页版 · {{ build }} 更新</div>
     </div>
+    <BackupDialog v-if="showBackup" @close="showBackup = false" />
   </div>
 </template>
 

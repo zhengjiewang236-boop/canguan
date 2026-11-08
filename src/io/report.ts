@@ -30,6 +30,8 @@ export const COUNT_MODE = '填数量'
 export const WEIGH_MODE = '每箱称重'
 
 export const backupName = (today: string) => `餐馆记账备份_${today}.xlsx`
+/** 只备份一段时间的记录（本子、清单、设置还是全部带上） */
+export const backupRangeName = (from: string, to: string) => `餐馆记账备份_${from}至${to}.xlsx`
 export const listsName = (today: string) => `餐馆记账清单_${today}.xlsx`
 
 export function fileName(from: string | null, to: string | null, category: string | null, today: string): string {

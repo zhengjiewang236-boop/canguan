@@ -34,14 +34,18 @@ export async function importSettings(m: Map<string, string>) {
   })
 }
 
-/** 备份：全部记录 + 本子 + 清单 + 设置，做成一个 Excel。同步算完（iPhone 分享要在点按钮那一下里调）。 */
-export function makeBackup(): { name: string; bytes: Uint8Array } {
+/**
+ * 备份：记录 + 本子 + 清单 + 设置（Key），做成一个 Excel。from/to 都是 null = 全部记录。
+ * 本子、清单、设置总是全部带上。同步算完（iPhone 分享要在点按钮那一下里调）。
+ */
+export function makeBackup(from: string | null = null, to: string | null = null): { name: string; bytes: Uint8Array } {
+  const all = !from || !to
   return {
-    name: Report.backupName(today()),
+    name: all ? Report.backupName(today()) : Report.backupRangeName(from!, to!),
     bytes: Report.build({
-      records: db.range(null, null, null),
-      from: null,
-      to: null,
+      records: db.range(all ? null : from, all ? null : to, null),
+      from: all ? null : from,
+      to: all ? null : to,
       category: null,
       items: db.allItems(),
       cats: state.cats,
