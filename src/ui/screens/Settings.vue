@@ -16,7 +16,7 @@ import ItemDialog from '../dialogs/ItemDialog.vue'
 import Confirm from '../dialogs/Confirm.vue'
 import { back, catRename, push } from '../nav'
 import { catColor, queue } from '../common'
-import { startRestore } from '../flows'
+import { showDownloadHelp, startRestore } from '../flows'
 import { toast } from '../toast'
 import { ICON_ADD, ICON_BOOKS, ICON_CAMERA, ICON_DRAG, ICON_FOLDER, ICON_MORE, ICON_RESTORE, ICON_SHARE } from '../icons'
 
@@ -82,7 +82,7 @@ async function sendLists() {
   menu.value = false
   const { name, bytes } = makeLists()
   const r = await shareFile(bytes, name, MIME, '餐馆记账清单')
-  if (r === 'downloaded') toast('清单文件已下载：' + name)
+  if (r === 'downloaded') showDownloadHelp(name, 'lists')
 }
 function doDelete() {
   const id = confirmDelete.value!.id!

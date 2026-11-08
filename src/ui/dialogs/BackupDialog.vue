@@ -11,6 +11,7 @@ import Icon from '../components/Icon.vue'
 import RangeChooser from '../components/RangeChooser.vue'
 import { useRange } from '../range'
 import { toast } from '../toast'
+import { showDownloadHelp } from '../flows'
 import { ICON_DOWNLOAD, ICON_SHARE } from '../icons'
 
 const emit = defineEmits<{ close: [] }>()
@@ -25,7 +26,7 @@ async function done(res: 'shared' | 'downloaded' | 'cancelled', name: string) {
   if (res === 'cancelled') return
   // 首页的“上次备份”只算全部备份
   if (range.all) await markBackup()
-  if (res === 'downloaded') toast('备份文件已下载：' + name)
+  if (res === 'downloaded') showDownloadHelp(name, 'backup')
   emit('close')
 }
 async function send() {

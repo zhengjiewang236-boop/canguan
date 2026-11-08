@@ -9,6 +9,7 @@ import Settings from './ui/screens/Settings.vue'
 import Categories from './ui/screens/Categories.vue'
 import AiSettings from './ui/screens/AiSettings.vue'
 import RestoreFlow from './ui/dialogs/RestoreFlow.vue'
+import DownloadHelp from './ui/dialogs/DownloadHelp.vue'
 
 const top = computed(() => nav.stack[nav.stack.length - 1])
 // 下面一层的页面留着（不重新加载），只显示最上面的
@@ -27,6 +28,7 @@ const lift = computed(() => top.value.name === 'settings' || top.value.name === 
     </div>
   </template>
   <RestoreFlow />
+  <DownloadHelp />
   <Transition name="toast">
     <div v-if="toastState.msg" :key="toastState.id" class="toast" :class="{ lift }">
       <span class="grow">{{ toastState.msg }}</span>

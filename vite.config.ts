@@ -16,6 +16,11 @@ export default defineConfig({
     VitePWA({
       // 有新版本时先提示，点了才刷新（免得正在填的时候页面突然刷新）
       registerType: 'prompt',
+      // 自己写的 service worker（多了安卓上“分享到 餐馆记账”）
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: { globPatterns: ['**/*.{js,css,html,png,svg,woff2}'] },
       includeAssets: ['icon-180.png', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: '餐馆记账',
@@ -28,16 +33,25 @@ export default defineConfig({
         scope: './',
         background_color: '#F8F6F1',
         theme_color: '#F8F6F1',
+        // 安卓：在文件管理器里把备份文件“分享”给 餐馆记账，就能直接恢复（要先加到主屏幕）
+        share_target: {
+          action: './share-target',
+          method: 'POST',
+          enctype: 'multipart/form-data',
+          params: {
+            files: [
+              {
+                name: 'file',
+                accept: ['.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/octet-stream'],
+              },
+            ],
+          },
+        },
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        // DeepSeek 的请求不缓存
-        navigateFallback: 'index.html',
       },
     }),
   ],

@@ -4,6 +4,7 @@ import './ui/style.css'
 import { initDb } from './data/db'
 import { initNav } from './ui/nav'
 import { appUpdate } from './ui/common'
+import { checkShared } from './ui/flows'
 
 async function start() {
   initNav()
@@ -17,6 +18,7 @@ async function start() {
     return
   }
   createApp(App).mount('#app')
+  checkShared()
 }
 start()
 

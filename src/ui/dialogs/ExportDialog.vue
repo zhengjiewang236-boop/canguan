@@ -10,7 +10,7 @@ import Modal from '../components/Modal.vue'
 import Icon from '../components/Icon.vue'
 import RangeChooser from '../components/RangeChooser.vue'
 import { useRange, useRangeThisMonth } from '../range'
-import { toast } from '../toast'
+import { showDownloadHelp } from '../flows'
 import { ICON_DOWNLOAD, ICON_SHARE } from '../icons'
 
 const props = defineProps<{ presetCategory: string | null; preset: { from: string | null; to: string | null } | null }>()
@@ -26,7 +26,7 @@ async function send() {
   try {
     const { name, bytes } = makeExport(range.from, range.to, cat.value || null)
     const res = await shareFile(bytes, name, MIME, name.replace(/\.xlsx$/, ''))
-    if (res === 'downloaded') toast('已下载：' + name)
+    if (res === 'downloaded') showDownloadHelp(name, 'boss')
     if (res !== 'cancelled') emit('close')
   } finally {
     busy.value = false
@@ -35,7 +35,7 @@ async function send() {
 function save() {
   const { name, bytes } = makeExport(range.from, range.to, cat.value || null)
   download(new Blob([bytes as BlobPart], { type: MIME }), name)
-  toast('已下载：' + name)
+  showDownloadHelp(name, 'boss')
   emit('close')
 }
 </script>

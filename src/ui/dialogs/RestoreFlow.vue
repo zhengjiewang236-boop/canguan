@@ -3,10 +3,12 @@
 import { computed, ref, watch } from 'vue'
 import Modal from '../components/Modal.vue'
 import Check from '../components/Check.vue'
-import { restoreState } from '../flows'
+import { pickAndRestore, restoreState } from '../flows'
+import { isIOS } from '../common'
 import { applyRestore } from '../../data/backup'
 import { toast } from '../toast'
 
+const ios = isIOS()
 const withRecords = ref(true)
 const withLists = ref(true)
 const withSettings = ref(true)
@@ -60,6 +62,21 @@ async function run() {
 }
 </script>
 <template>
+  <Modal v-if="restoreState.asking" title="恢复数据" @close="restoreState.asking = false">
+    <div class="small">选本 App（手机版或网页版）的备份文件 <b>餐馆记账备份_日期.xlsx</b>，记录、本子、清单和设置都能恢复。同一个文件恢复两次也不会重复。</div>
+    <div class="card stack s6" style="padding: 12px">
+      <div class="semi">备份文件在微信里的话，先存到手机</div>
+      <div v-if="ios" class="small">在微信里点开备份文件 → 右上角 <b>···</b> →「用其他应用打开」→「存储到文件」，然后点下面的按钮选它。</div>
+      <div v-else class="small">
+        在微信里点开备份文件 → 右上角 <b>···</b> →「保存到手机」，然后点下面的按钮，在「下载」→「WeiXin」里选它。<br />
+        也可以在文件管理里长按备份文件 →「分享」→「餐馆记账」（要先把网页版加到主屏幕）。
+      </div>
+    </div>
+    <template #actions>
+      <button class="btn text" @click="restoreState.asking = false">取消</button>
+      <button class="btn" @click="pickAndRestore">选择备份文件</button>
+    </template>
+  </Modal>
   <Modal v-if="restoreState.busy" :dismissable="false" locked title="正在读文件…">
     <div class="row"><div class="spinner" /><span>请稍等</span></div>
   </Modal>
