@@ -3,19 +3,24 @@
 import { onBeforeUnmount, onMounted } from 'vue'
 import Icon from './Icon.vue'
 import { ICON_CLOSE } from '../icons'
-const props = withDefaults(defineProps<{ title?: string; full?: boolean; dismissable?: boolean }>(), { dismissable: true })
+import { openModal } from '../nav'
+// dismissable：点外面能不能关；locked：返回键也不能关（比如“正在识别…”）
+const props = withDefaults(defineProps<{ title?: string; full?: boolean; dismissable?: boolean; locked?: boolean }>(), { dismissable: true, locked: false })
 const emit = defineEmits<{ close: [] }>()
 function backdrop() {
   if (props.dismissable) emit('close')
 }
 // 打开时背后的页面不跟着滚
-let count = 0
+// 安卓的返回键先关对话框
+let release: (() => void) | undefined
 onMounted(() => {
-  count = Number(document.body.dataset.modals ?? 0) + 1
+  const count = Number(document.body.dataset.modals ?? 0) + 1
   document.body.dataset.modals = String(count)
   document.body.style.overflow = 'hidden'
+  release = openModal(() => emit('close'), props.locked)
 })
 onBeforeUnmount(() => {
+  release?.()
   const n = Number(document.body.dataset.modals ?? 1) - 1
   document.body.dataset.modals = String(n)
   if (n <= 0) document.body.style.overflow = ''
@@ -51,6 +56,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+  overscroll-behavior: contain;
 }
 .dlg {
   width: 100%;
@@ -71,6 +77,7 @@ onBeforeUnmount(() => {
 .dlg-body {
   padding: 8px 24px 8px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
@@ -105,6 +112,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   padding: 0 16px 16px;
+  overscroll-behavior: contain;
 }
 .full-foot {
   display: flex;

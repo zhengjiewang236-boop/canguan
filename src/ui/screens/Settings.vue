@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // 设置（控制台）：选本子 → 加东西、改名、改单位、换到别的本子、删除；按住 ≡ 拖动调顺序（同一个分区里）
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type { Item } from '../../data/model'
 import * as db from '../../data/db'
 import { state } from '../../data/db'
@@ -14,7 +14,7 @@ import Empty from '../components/Empty.vue'
 import SortList from '../components/SortList.vue'
 import ItemDialog from '../dialogs/ItemDialog.vue'
 import Confirm from '../dialogs/Confirm.vue'
-import { back, push } from '../nav'
+import { back, catRename, push } from '../nav'
 import { catColor, queue } from '../common'
 import { startRestore } from '../flows'
 import { toast } from '../toast'
@@ -24,6 +24,12 @@ const props = defineProps<{ initial?: string }>()
 const catState = ref(props.initial ?? state.cats[0]?.name ?? '')
 // 本子被删 / 改名后，选中的本子不在了就回到第一个
 const cat = computed(() => (state.cats.some((c) => c.name === catState.value) ? catState.value : (state.cats[0]?.name ?? '')))
+watch(
+  () => catRename.n,
+  () => {
+    if (catState.value === catRename.from) catState.value = catRename.to
+  },
+)
 const all = computed(() => db.allItems())
 const items = computed(() => all.value.filter((i) => i.category === cat.value))
 const sections = computed(() => {

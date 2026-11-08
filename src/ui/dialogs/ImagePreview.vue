@@ -5,6 +5,7 @@ import Modal from '../components/Modal.vue'
 import Icon from '../components/Icon.vue'
 import { download, shareFile } from '../../io/share'
 import { toast } from '../toast'
+import { isIOS } from '../common'
 import { ICON_DOWNLOAD, ICON_SHARE } from '../icons'
 const props = defineProps<{ blob: Blob; name: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -20,15 +21,27 @@ async function send() {
     busy.value = false
   }
 }
-function save() {
+const ios = isIOS()
+async function save() {
+  if (ios) {
+    // iPhone：分享里有「存储图像」，选它就存进相册
+    busy.value = true
+    try {
+      const r = await shareFile(props.blob, props.name, 'image/png', '进货统计')
+      if (r === 'downloaded') toast('图片已下载')
+    } finally {
+      busy.value = false
+    }
+    return
+  }
   download(props.blob, props.name)
-  toast('图片已下载（iPhone 上可以长按图片「存储到照片」）')
+  toast('图片已下载')
 }
 </script>
 <template>
   <Modal full title="统计图片" @close="emit('close')">
     <img :src="url" alt="统计图片" class="pic" />
-    <div class="small muted center" style="padding-top: 6px">也可以长按图片保存</div>
+    <div class="small muted center" style="padding-top: 6px">{{ ios ? '存到相册：点「存到手机」→「存储图像」；也可以长按图片保存' : '也可以长按图片保存' }}</div>
     <template #actions>
       <button class="btn outline" style="flex: 1" :disabled="busy" @click="save"><Icon :path="ICON_DOWNLOAD" :size="18" />存到手机</button>
       <button class="btn" style="flex: 1" :disabled="busy" @click="send"><Icon :path="ICON_SHARE" :size="18" />发给老板</button>

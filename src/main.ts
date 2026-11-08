@@ -3,6 +3,7 @@ import App from './App.vue'
 import './ui/style.css'
 import { initDb } from './data/db'
 import { initNav } from './ui/nav'
+import { appUpdate } from './ui/common'
 
 async function start() {
   initNav()
@@ -19,7 +20,17 @@ async function start() {
 }
 start()
 
-// 离线也能用：注册 service worker（有新版本时自动更新）
+// 离线也能用：注册 service worker。有新版本时首页提示「点这里更新」
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
-  import('virtual:pwa-register').then(({ registerSW }) => registerSW({ immediate: true }))
+  import('virtual:pwa-register').then(({ registerSW }) => {
+    const update = registerSW({
+      immediate: true,
+      onNeedRefresh() {
+        appUpdate.ready = true
+        appUpdate.apply = () => update(true)
+      },
+    })
+    // 一直开着不关的话，每小时看一次有没有新版本
+    setInterval(() => navigator.serviceWorker.getRegistration().then((r) => r?.update()), 60 * 60 * 1000)
+  })
 }

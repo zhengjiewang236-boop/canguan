@@ -179,7 +179,7 @@ const showExport = ref(false)
       </div>
       <template #actions><button class="btn text" @click="detail = null">关闭</button></template>
     </Modal>
-    <Modal v-if="making" :dismissable="false" title="正在生成图片…"><div class="row"><div class="spinner" /><span>请稍等</span></div></Modal>
+    <Modal v-if="making" :dismissable="false" locked title="正在生成图片…"><div class="row"><div class="spinner" /><span>请稍等</span></div></Modal>
     <ImagePreview v-if="image" :blob="image.blob" :name="image.name" @close="image = null" />
     <ExportDialog v-if="showExport" :preset-category="cat || null" :preset="{ from: range.from, to: range.to }" @close="showExport = false" />
   </div>

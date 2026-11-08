@@ -8,7 +8,7 @@ import { shareFile } from '../../io/share'
 import AppBar from '../components/AppBar.vue'
 import Icon from '../components/Icon.vue'
 import { push } from '../nav'
-import { catColor, catIconOf, isIOS, isStandalone } from '../common'
+import { appUpdate, catColor, catIconOf, isIOS, isStandalone, isWeChat } from '../common'
 import { startRestore } from '../flows'
 import { toast } from '../toast'
 import { ICON_BACKUP, ICON_CHART, ICON_INSTALL, ICON_RIGHT, ICON_SETTINGS, ICON_CLOSE } from '../icons'
@@ -59,7 +59,9 @@ try {
 } catch {
   /* 不能存就每次都提示 */
 }
-const showInstall = computed(() => !isStandalone() && !hideInstall.value)
+const wechat = isWeChat()
+const showInstall = computed(() => !wechat && !isStandalone() && !hideInstall.value)
+const build = __BUILD__
 const ios = isIOS()
 function closeInstall() {
   hideInstall.value = true
@@ -78,6 +80,19 @@ function closeInstall() {
       <button class="btn text" @click="startRestore">恢复数据</button>
     </AppBar>
     <div class="content stack">
+      <div v-if="wechat" class="wechat">
+        <div class="semi">现在是在微信里打开的</div>
+        <div class="small">
+          在微信里记的数据存在微信里，也不能备份。请点右上角 <b>···</b> →「在浏览器打开」{{ ios ? '（选 Safari）' : '' }}，再加到主屏幕使用。
+        </div>
+      </div>
+      <button v-if="appUpdate.ready" class="update" @click="appUpdate.apply()">
+        <div class="grow" style="text-align: left">
+          <div class="semi">有新版本了</div>
+          <div class="small">点这里更新（数据不会丢）</div>
+        </div>
+        <Icon :path="ICON_RIGHT" />
+      </button>
       <div v-if="showInstall" class="install">
         <Icon :path="ICON_INSTALL" />
         <div class="grow">
@@ -128,6 +143,7 @@ function closeInstall() {
       </div>
       <div class="small muted" style="padding: 4px">填的数字按日期自动保存。发给老板：在「统计分析」里发图片或分享 Excel 表格。</div>
       <div class="tiny muted" style="padding: 0 4px">数据只存在这台手机的这个浏览器里。备份文件跟安卓 App 通用，可以互相恢复。</div>
+      <div class="tiny muted center" style="opacity: 0.7">网页版 · {{ build }} 更新</div>
     </div>
   </div>
 </template>
@@ -192,6 +208,22 @@ function closeInstall() {
 .bk.warn {
   background: var(--error-container);
   color: var(--on-error-container);
+}
+.wechat {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--error-container);
+  color: var(--on-error-container);
+}
+.update {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--primary);
+  color: var(--on-primary);
 }
 .install {
   display: flex;

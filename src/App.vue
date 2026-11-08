@@ -12,14 +12,11 @@ import RestoreFlow from './ui/dialogs/RestoreFlow.vue'
 
 const top = computed(() => nav.stack[nav.stack.length - 1])
 // 下面一层的页面留着（不重新加载），只显示最上面的
-const keyOf = (i: number) => {
-  const s = nav.stack[i]
-  return `${i}:${s.name}:${'cat' in s ? s.cat : ''}`
-}
+const lift = computed(() => top.value.name === 'settings' || top.value.name === 'cats')
 </script>
 
 <template>
-  <template v-for="(s, i) in nav.stack" :key="keyOf(i)">
+  <template v-for="s in nav.stack" :key="s.uid">
     <div v-show="s === top" class="layer">
       <Home v-if="s.name === 'home'" />
       <Book v-else-if="s.name === 'book'" :cat="s.cat" />
@@ -31,7 +28,7 @@ const keyOf = (i: number) => {
   </template>
   <RestoreFlow />
   <Transition name="toast">
-    <div v-if="toastState.msg" :key="toastState.id" class="toast">
+    <div v-if="toastState.msg" :key="toastState.id" class="toast" :class="{ lift }">
       <span class="grow">{{ toastState.msg }}</span>
       <button v-if="toastState.action" class="ta" @click="runToastAction">{{ toastState.action }}</button>
     </div>
@@ -56,6 +53,9 @@ const keyOf = (i: number) => {
   color: #f4f0e8;
   font-size: 15px;
   box-shadow: var(--shadow);
+}
+.toast.lift {
+  bottom: calc(88px + env(safe-area-inset-bottom));
 }
 .toast .ta {
   color: #9cd3bc;

@@ -9,7 +9,7 @@ import Icon from '../components/Icon.vue'
 import SortList from '../components/SortList.vue'
 import CatDialog from '../dialogs/CatDialog.vue'
 import Confirm from '../dialogs/Confirm.vue'
-import { back, push } from '../nav'
+import { back, push, renameCat } from '../nav'
 import { catColor, queue } from '../common'
 import { catIcon, ICON_ADD, ICON_DRAG } from '../icons'
 
@@ -34,7 +34,9 @@ function save(c: Cat) {
   const old = editing.value
   adding.value = false
   editing.value = null
-  queue(() => db.saveCategory(c, old))
+  queue(() => db.saveCategory(c, old)).then(() => {
+    if (old && old.name !== c.name.trim()) renameCat(old.name, c.name.trim())
+  })
 }
 function askDelete() {
   confirmDelete.value = editing.value

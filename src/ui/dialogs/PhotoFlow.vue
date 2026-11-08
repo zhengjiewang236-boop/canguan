@@ -106,7 +106,7 @@ function retry() {
     </template>
   </Modal>
 
-  <Modal v-if="working" :dismissable="false" title="正在识别…">
+  <Modal v-if="working" :dismissable="false" locked title="正在识别…">
     <div class="row" style="gap: 16px">
       <div class="spinner" />
       <div>

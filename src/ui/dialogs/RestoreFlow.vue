@@ -60,7 +60,7 @@ async function run() {
 }
 </script>
 <template>
-  <Modal v-if="restoreState.busy" :dismissable="false" title="正在读文件…">
+  <Modal v-if="restoreState.busy" :dismissable="false" locked title="正在读文件…">
     <div class="row"><div class="spinner" /><span>请稍等</span></div>
   </Modal>
   <Modal v-if="p" :title="hasRecords || hasSettings ? '从备份恢复' : '导入清单'" @close="restoreState.preview = null">
