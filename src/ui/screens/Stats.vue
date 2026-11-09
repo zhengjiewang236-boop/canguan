@@ -35,6 +35,12 @@ const groups = computed(() => {
   for (const s of items.value) m.set(s.category, [...(m.get(s.category) ?? []), s])
   return [...m.entries()]
 })
+/** 一天里按本子分开（小本、大本……不混在一起） */
+function byCat(list: ItemSum[]): [string, ItemSum[]][] {
+  const m = new Map<string, ItemSum[]>()
+  for (const s of list) m.set(s.category, [...(m.get(s.category) ?? []), s])
+  return [...m.entries()]
+}
 const taken = computed(() => records.value.filter((r) => r.taken).sort((a, b) => a.date.localeCompare(b.date) || (a.id ?? 0) - (b.id ?? 0)))
 const rangeName = computed(() => {
   const k = range.matched(t)
@@ -156,12 +162,17 @@ const showExport = ref(false)
             <span class="grow title-m">{{ shortDateWeek(d.date) }}{{ relativeDay(d.date) ? ` · ${relativeDay(d.date)}` : '' }}</span>
             <span class="title-s" style="color: var(--primary)">{{ d.items.length }} 种</span>
           </div>
-          <hr class="divider" style="margin: 4px 0" />
-          <div v-for="s in d.items" :key="s.category + s.name" class="row">
-            <CatTag v-if="!cat" :cat="s.category" />
-            <span class="grow">{{ s.name }}</span>
-            <span class="semi" :class="{ taken: s.total < 0 }">{{ s.unitsText() }}</span>
-          </div>
+          <template v-for="[c, list] in byCat(d.items)" :key="c">
+            <hr class="divider" style="margin: 4px 0" />
+            <div v-if="!cat" class="row" style="padding-top: 2px">
+              <CatTag :cat="c" />
+              <span class="small muted">{{ list.length }} 种</span>
+            </div>
+            <div v-for="s in list" :key="s.category + s.name" class="row">
+              <span class="grow">{{ s.name }}</span>
+              <span class="semi" :class="{ taken: s.total < 0 }">{{ s.unitsText() }}</span>
+            </div>
+          </template>
           <div v-for="r in d.records.filter((x) => x.taken)" :key="r.id" class="small taken">{{ r.name }}　{{ takenText(r) }}</div>
         </div>
       </template>

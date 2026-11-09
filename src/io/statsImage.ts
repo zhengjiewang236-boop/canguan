@@ -116,12 +116,18 @@ function paint(p: Pen, o: ImageOpts): number {
       const right = `${d.items.length} 种`
       p.text(right, W - PAD - 16 - p.measure(right, 38, true), y + 54, 38, PRIMARY, true)
       y += 92
-      const showCat = new Set(d.items.map((i) => i.category)).size > 1
-      y = table(
-        p,
-        d.items.map((s) => [(showCat ? `${s.category}｜` : '') + s.name, s.unitsText()]),
-        y,
-      )
+      // 每个本子分开一块（小本、大本……不混在一起）
+      const groups = new Map<string, typeof d.items>()
+      for (const s of d.items) groups.set(s.category, [...(groups.get(s.category) ?? []), s])
+      const many = groups.size > 1 || o.catText === '全部本子'
+      for (const [cat, list] of groups) {
+        if (many) y = tag(p, cat, y + 4, `${list.length} 种`, o.colorOf(cat))
+        y = table(
+          p,
+          list.map((s) => [s.name, s.unitsText()]),
+          y,
+        )
+      }
     }
   }
 
