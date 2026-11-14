@@ -1,16 +1,18 @@
 <script setup lang="ts">
 // 一个本子的一天：清单里的东西都列出来，直接填数字（自动保存）。
 // 牛肉这种“每箱称重”的，一箱填一个斤数。清单里没有的，可以临时加。
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { Item, Rec } from '../../data/model'
-import { DEFAULT_UNITS, fmtQty, itemOrder, itemSums, newRec, parseQty, shortDateWeek, takenText, today } from '../../data/model'
+import { DEFAULT_UNITS, fmtQty, fullDate, itemOrder, itemSums, newRec, parseQty, shortDateWeek, takenText, today } from '../../data/model'
 import * as db from '../../data/db'
 import { state } from '../../data/db'
 import AppBar from '../components/AppBar.vue'
 import Icon from '../components/Icon.vue'
 import DateBar from '../components/DateBar.vue'
 import Empty from '../components/Empty.vue'
+import Modal from '../components/Modal.vue'
 import WeighBlock from '../components/WeighBlock.vue'
+import CountRow from '../components/CountRow.vue'
 import RecordDialog from '../dialogs/RecordDialog.vue'
 import ReduceDialog from '../dialogs/ReduceDialog.vue'
 import WeightDialog from '../dialogs/WeightDialog.vue'
@@ -21,7 +23,7 @@ import PhotoFlow from '../dialogs/PhotoFlow.vue'
 import { back, push } from '../nav'
 import { catColor, queue } from '../common'
 import { toast } from '../toast'
-import { ICON_ADD, ICON_CAMERA, ICON_REMOVE, ICON_SEARCH, ICON_SETTINGS, ICON_SHARE } from '../icons'
+import { ICON_ADD, ICON_CAMERA, ICON_EYE, ICON_SEARCH, ICON_SETTINGS, ICON_SHARE } from '../icons'
 
 const props = defineProps<{ cat: string }>()
 const color = computed(() => catColor(props.cat))
@@ -141,11 +143,8 @@ function stepQty(it: Item, d: number) {
   const v = (parseQty(form[ik(it)] ?? '') ?? 0) + d
   setQty(it, v === 0 ? '' : fmtQty(v))
 }
-function onInput(it: Item, e: Event) {
-  setQty(it, (e.target as HTMLInputElement).value)
-}
-function nextField(e: KeyboardEvent) {
-  const all = [...document.querySelectorAll<HTMLInputElement>('.book-qty')]
+function nextField(e: KeyboardEvent, sel: string) {
+  const all = [...document.querySelectorAll<HTMLInputElement>(sel)]
   const i = all.indexOf(e.target as HTMLInputElement)
   if (i >= 0 && i + 1 < all.length) all[i + 1].focus()
   else (e.target as HTMLInputElement).blur()
@@ -294,6 +293,43 @@ onMounted(() => {
 })
 onBeforeUnmount(() => ro?.disconnect())
 
+// ---------- 预览：只列这天填了的（按清单顺序，从第一个到最后一个），也能加减 ----------
+const previewOpen = ref(false)
+/** 打开预览时填了的那些；预览里清空的先留着（可以再加回来），关掉再开才不显示 */
+const previewKeys = ref<Set<string>>(new Set())
+function openPreview() {
+  previewKeys.value = new Set(list.value.filter(isFilled).map(ik))
+  previewOpen.value = true
+}
+const bySection = (l: Item[]) => {
+  const m = new Map<string, Item[]>()
+  for (const it of l) m.set(it.section, [...(m.get(it.section) ?? []), it])
+  return [...m.entries()]
+}
+const previewSections = computed(() => bySection(list.value.filter((it) => previewKeys.value.has(ik(it)))))
+const previewFilled = computed(() => list.value.filter((it) => previewKeys.value.has(ik(it)) && isFilled(it)).length + others.value.length)
+
+// 预览里“加一样”：从清单里还没填的挑一样
+const picking = ref(false)
+const pickQ = ref('')
+const pickSections = computed(() => {
+  const q = pickQ.value.trim().toLowerCase()
+  return bySection(list.value.filter((it) => !previewKeys.value.has(ik(it)) && (!q || it.name.toLowerCase().includes(q) || it.section.includes(q))))
+})
+async function addToPreview(it: Item) {
+  previewKeys.value = new Set([...previewKeys.value, ik(it)])
+  picking.value = false
+  pickQ.value = ''
+  await nextTick()
+  const row = document.getElementById('pvrow-' + it.id)
+  row?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  row?.querySelector('input')?.focus()
+}
+function pickOther() {
+  picking.value = false
+  addOther()
+}
+
 const daySums = computed(() => itemSums(day.value, itemOrder(list.value)))
 const dayTaken = computed(() => day.value.filter((r) => r.taken))
 </script>
@@ -316,7 +352,7 @@ const dayTaken = computed(() => day.value.filter((r) => r.taken))
       </div>
     </div>
 
-    <div class="content flush">
+    <div class="content flush" style="padding-bottom: 96px">
       <div class="stack s8" style="padding: 4px 16px 8px">
         <DateBar :date="date" :accent="color" @change="date = $event" />
         <div class="row">
@@ -350,41 +386,17 @@ const dayTaken = computed(() => day.value.filter((r) => r.taken))
             @taken-click="(r) => (reduce = { item: it, presetQty: null, initial: { ...r } })"
             @reduce="reduce = { item: it, presetQty: null, initial: null }"
           />
-          <div
+          <CountRow
             v-else
-            class="cr"
-            :class="{
-              filled: (parseQty(form[ik(it)] ?? '') ?? 0) > 0,
-              neg: (parseQty(form[ik(it)] ?? '') ?? 0) < 0,
-            }"
-          >
-            <div class="grow">
-              <div class="nm">{{ it.name }}</div>
-              <button v-if="takenCounts.get(ik(it))" class="reason" @click="reduce = { item: it, presetQty: null, initial: { ...takenCounts.get(ik(it))! } }">
-                {{ takenText(takenCounts.get(ik(it))!) }}
-              </button>
-              <div v-else-if="(parseQty(form[ik(it)] ?? '') ?? 0) < 0" class="small taken">要写原因…</div>
-              <div v-else-if="it.hint" class="small" style="color: var(--secondary)">{{ it.hint }}</div>
-            </div>
-            <button class="icon-btn" aria-label="减 1" @click="stepQty(it, -1)"><Icon :path="ICON_REMOVE" /></button>
-            <input
-              class="qty book-qty"
-              :class="{
-                filled: (parseQty(form[ik(it)] ?? '') ?? 0) > 0,
-                neg: (parseQty(form[ik(it)] ?? '') ?? 0) < 0,
-                bad: !!(form[ik(it)] ?? '').trim() && form[ik(it)] !== '-' && parseQty(form[ik(it)]) == null,
-              }"
-              style="width: 62px"
-              :value="form[ik(it)] ?? ''"
-              inputmode="decimal"
-              enterkeyhint="next"
-              autocomplete="off"
-              @input="onInput(it, $event)"
-              @keydown.enter.prevent="nextField"
-            />
-            <button class="icon-btn" aria-label="加 1" @click="stepQty(it, 1)"><Icon :path="ICON_ADD" /></button>
-            <span class="unit muted">{{ it.unit }}</span>
-          </div>
+            :item="it"
+            :text="form[ik(it)] ?? ''"
+            :taken="takenCounts.get(ik(it))"
+            input-class="book-qty"
+            @input="(t) => setQty(it, t)"
+            @step="(d) => stepQty(it, d)"
+            @next="(e) => nextField(e, '.book-qty')"
+            @reason="reduce = { item: it, presetQty: null, initial: { ...takenCounts.get(ik(it))! } }"
+          />
         </template>
       </template>
 
@@ -427,6 +439,82 @@ const dayTaken = computed(() => day.value.filter((r) => r.taken))
         </div>
       </div>
     </div>
+
+    <!-- 底部一条：这天填了几项 + 预览（不挡住某一行的加减按钮） -->
+    <div v-if="list.length" class="pv-bar">
+      <span class="grow semi">{{ shortDateWeek(date) }} · {{ filledCount > 0 ? `已填 ${filledCount} 项` : '还没填' }}</span>
+      <button class="btn" :style="{ background: color }" @click="openPreview"><Icon :path="ICON_EYE" :size="20" />预览</button>
+    </div>
+
+    <Modal v-if="previewOpen" full @close="previewOpen = false">
+      <template #title>预览 · {{ cat }}</template>
+      <div class="pv-info">
+        <div class="title-s">{{ fullDate(date) }}</div>
+        <div class="small muted">
+          {{ previewFilled > 0 ? `已填 ${previewFilled} 项，只列填了的。可以直接加减，改了自动保存。` : '这天还没填。点下面「加一样」。' }}
+        </div>
+      </div>
+      <template v-for="[title, its] in previewSections" :key="title">
+        <div v-if="hasSections" class="pv-sec" :style="{ color }">{{ title || '清单' }}</div>
+        <div class="pv-card">
+          <div v-for="it in its" :id="'pvrow-' + it.id" :key="it.id">
+            <WeighBlock
+              v-if="it.weigh"
+              :name="it.name"
+              :unit="it.unit"
+              :hint="it.hint"
+              :values="(boxes.get(ik(it)) ?? []).map((r) => r.qty)"
+              :taken="takenBoxes.get(ik(it)) ?? []"
+              reducible
+              @add="(w) => addBox(it, w)"
+              @entry="(i) => (editBox = { ...(boxes.get(ik(it)) ?? [])[i] })"
+              @taken-click="(r) => (reduce = { item: it, presetQty: null, initial: { ...r } })"
+              @reduce="reduce = { item: it, presetQty: null, initial: null }"
+            />
+            <CountRow
+              v-else
+              :item="it"
+              :text="form[ik(it)] ?? ''"
+              :taken="takenCounts.get(ik(it))"
+              input-class="pv-qty"
+              @input="(t) => setQty(it, t)"
+              @step="(d) => stepQty(it, d)"
+              @next="(e) => nextField(e, '.pv-qty')"
+              @reason="reduce = { item: it, presetQty: null, initial: { ...takenCounts.get(ik(it))! } }"
+            />
+          </div>
+        </div>
+      </template>
+      <template v-if="others.length">
+        <div class="pv-sec muted">临时加的（不在清单里）</div>
+        <div class="pv-card">
+          <button v-for="r in others" :key="r.id" class="or" @click="editOther(r)">
+            <div class="grow" style="text-align: left">
+              <div>{{ r.name }}</div>
+              <div v-if="r.note" class="small muted">{{ r.note }}</div>
+            </div>
+            <span class="semi">{{ fmtQty(r.qty) }} {{ r.unit }}</span>
+          </button>
+        </div>
+      </template>
+      <template #actions>
+        <button class="btn outline" style="flex: 1" @click="picking = true"><Icon :path="ICON_ADD" :size="18" />加一样</button>
+        <button class="btn" style="flex: 1" @click="previewOpen = false">完成</button>
+      </template>
+    </Modal>
+    <Modal v-if="picking" title="加一样" @close="((picking = false), (pickQ = ''))">
+      <input v-model="pickQ" class="input" placeholder="搜品名" enterkeyhint="search" />
+      <template v-for="[t, its] in pickSections" :key="t">
+        <div v-if="hasSections" class="label" style="padding-top: 4px">{{ t || '清单' }}</div>
+        <button v-for="it in its" :key="it.id" class="pick" @click="addToPreview(it)">
+          <span class="grow">{{ it.name }}</span>
+          <span class="small muted">{{ it.weigh ? '每箱称重' : it.unit }}</span>
+        </button>
+      </template>
+      <div v-if="!pickSections.length" class="muted">{{ pickQ.trim() ? '没找到' : '清单里的都在预览里了' }}</div>
+      <div><button class="btn text" style="padding: 0" @click="pickOther">+ 加一样清单里没有的</button></div>
+      <template #actions><button class="btn text" @click="((picking = false), (pickQ = ''))">取消</button></template>
+    </Modal>
 
     <RecordDialog
       v-if="editing"
@@ -514,36 +602,43 @@ const dayTaken = computed(() => day.value.filter((r) => r.taken))
   background: var(--outline);
   margin-top: 4px;
 }
-.cr {
+.pv-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 14;
   display: flex;
   align-items: center;
-  gap: 0;
-  padding: 4px 4px 4px 16px;
-  border-bottom: 1px solid var(--ov-soft);
+  gap: 12px;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  border-top: 1px solid var(--outline-variant);
 }
-.cr.filled {
-  background: var(--pc-soft);
+.pv-info {
+  padding: 4px 4px 12px;
 }
-.cr.neg {
-  background: var(--taken-soft);
-}
-.cr .nm {
-  font-size: 17px;
-}
-.cr.filled .nm,
-.cr.neg .nm {
+.pv-sec {
+  font-size: 14px;
   font-weight: 700;
+  padding: 10px 4px 6px;
 }
-.reason {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--taken);
+.pv-card {
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--s-low);
+  margin: 0 -4px;
+}
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--s-lowest);
   text-align: left;
-  padding: 2px 0;
-}
-.unit {
-  width: 34px;
-  padding-left: 2px;
   font-size: 16px;
 }
 .or {

@@ -13,7 +13,7 @@ import DownloadHelp from './ui/dialogs/DownloadHelp.vue'
 
 const top = computed(() => nav.stack[nav.stack.length - 1])
 // 下面一层的页面留着（不重新加载），只显示最上面的
-const lift = computed(() => top.value.name === 'settings' || top.value.name === 'cats')
+const lift = computed(() => top.value.name === 'settings' || top.value.name === 'cats' || top.value.name === 'book')
 </script>
 
 <template>
